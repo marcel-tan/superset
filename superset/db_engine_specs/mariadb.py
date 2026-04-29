@@ -14,6 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+from typing import Any
+
 from superset.db_engine_specs.base import DatabaseCategory
 from superset.db_engine_specs.mysql import MySQLEngineSpec
 
@@ -21,6 +23,12 @@ from superset.db_engine_specs.mysql import MySQLEngineSpec
 class MariaDBEngineSpec(MySQLEngineSpec):
     engine = "mariadb"
     engine_name = "MariaDB"
+
+    # CVE-2024-34693: MariaDB does not enforce local_infile restrictions,
+    # allowing authenticated users to read arbitrary server files via
+    # LOAD DATA LOCAL INFILE when the MariaDB server has local_infile enabled.
+    disallow_uri_query_params: dict[str, set[str]] = {}
+    enforce_uri_query_params: dict[str, dict[str, Any]] = {}
 
     metadata = {
         "description": "MariaDB is a community-developed fork of MySQL.",
