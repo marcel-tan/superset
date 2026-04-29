@@ -703,20 +703,6 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             # assume the anonymous block is mutating
             return True
 
-        # Postgres runs DMLs prefixed by `EXPLAIN ANALYZE`, see
-        # https://www.postgresql.org/docs/current/sql-explain.html
-        if (
-            self._dialect == Dialects.POSTGRES
-            and isinstance(self._parsed, exp.Command)
-            and self._parsed.name == "EXPLAIN"
-            and self._parsed.expression.name.upper().startswith("ANALYZE ")
-        ):
-            analyzed_sql = self._parsed.expression.name[len("ANALYZE ") :]
-            return SQLStatement(
-                statement=analyzed_sql,
-                engine=self.engine,
-            ).is_mutating()
-
         return False
 
     def format(self, comments: bool = True) -> str:
