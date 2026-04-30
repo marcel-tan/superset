@@ -2959,6 +2959,12 @@ FROM query_to_xml('SELECT * from some_table WHERE id = 42')
             True,
         ),
         ("Table | limit 10", "kustokql", False),
+        # MySQL conditional comment bypass (CVE-2025-55674)
+        ("SELECT /*!VERSION()*/", "mysql", True),
+        ("SELECT /*!50000 VERSION()*/", "mysql", True),
+        ("SELECT 1 /*!,VERSION()*/", "mysql", True),
+        ("SELECT /*!query_to_xml('x')*/", "postgresql", True),
+        ("SELECT /* normal comment */ 1", "mysql", False),
     ],
 )
 def test_check_functions_present(sql: str, engine: str, expected: bool) -> None:
