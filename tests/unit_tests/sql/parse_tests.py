@@ -1105,6 +1105,8 @@ def test_split_kql(kql: str, expected: list[str]) -> None:
         ("postgresql", "DROP TABLE foo", True),
         ("postgresql", "EXPLAIN ANALYZE SELECT * FROM foo", False),
         ("postgresql", "EXPLAIN ANALYZE DELETE FROM foo", True),
+        ("postgresql", "EXPLAIN ANALYZE UPDATE foo SET bar = 1", True),
+        ("postgresql", "EXPLAIN ANALYZE INSERT INTO foo VALUES (1)", True),
         ("postgresql", "SHOW search_path", False),
         ("postgresql", "SET search_path TO public", False),
         (

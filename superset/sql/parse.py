@@ -703,6 +703,20 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             # assume the anonymous block is mutating
             return True
 
+        # Postgres runs DMLs prefixed by `EXPLAIN ANALYZE`, see
+        # https://www.postgresql.org/docs/current/sql-explain.html
+        if (
+            self._dialect == Dialects.POSTGRES
+            and isinstance(self._parsed, exp.Command)
+            and self._parsed.name == "EXPLAIN"
+            and self._parsed.expression.name.upper().startswith("ANALYZE ")
+        ):
+            analyzed_sql = self._parsed.expression.name[len("ANALYZE ") :]
+            return SQLStatement(
+                statement=analyzed_sql,
+                engine=self.engine,
+            ).is_mutating()
+
         return False
 
     def format(self, comments: bool = True) -> str:
@@ -866,7 +880,14 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
 
         :return: True if the statement has a subquery.
         """
-        return bool(self._parsed.find(exp.Subquery))
+        return bool(self._parsed.find(exp.Subquery)) or (
+            isinstance(self._parsed, exp.Select)
+            and any(
+                isinstance(expression, exp.Select)
+                for expression in self._parsed.walk()
+                if expression != self._parsed
+            )
+        )
 
     def parse_predicate(self, predicate: str) -> exp.Expression:
         """
