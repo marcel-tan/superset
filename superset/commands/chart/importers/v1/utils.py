@@ -77,8 +77,9 @@ def import_chart(
     if chart.id is None:
         db.session.flush()
 
-    if (user := get_user()) and user not in chart.owners:
-        chart.owners.append(user)
+    if not existing:
+        if (user := get_user()) and user not in chart.owners:
+            chart.owners.append(user)
 
     return chart
 
