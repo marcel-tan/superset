@@ -238,6 +238,81 @@ def test_import_existing_chart_with_permission(
     mock_can_access_chart.assert_called_once_with(slice)
 
 
+def test_import_chart_overwrite_preserves_ownership(
+    mocker: MockerFixture,
+    session_with_data: Session,
+) -> None:
+    """
+    Test that re-importing an existing chart with overwrite does not add the
+    importing user as an owner, preventing privilege escalation (Issue #37).
+    """
+    mocker.patch.object(security_manager, "can_access", return_value=True)
+    mocker.patch.object(security_manager, "can_access_chart", return_value=True)
+
+    admin = User(
+        first_name="Alice",
+        last_name="Doe",
+        email="adoe@example.org",
+        username="admin",
+        roles=[Role(name="Admin")],
+    )
+    gamma = User(
+        first_name="Bob",
+        last_name="Smith",
+        email="bsmith@example.org",
+        username="gamma",
+        roles=[Role(name="Gamma")],
+    )
+    session_with_data.add_all([admin, gamma])
+    session_with_data.flush()
+
+    existing_chart = (
+        session_with_data.query(Slice).filter(Slice.uuid == chart_config["uuid"]).one()
+    )
+    existing_chart.owners = [admin]
+    session_with_data.flush()
+
+    config = copy.deepcopy(chart_config)
+    config["datasource_id"] = 1
+    config["datasource_type"] = "table"
+
+    with override_user(gamma):
+        chart = import_chart(config, overwrite=True)
+
+    assert admin in chart.owners
+    assert gamma not in chart.owners
+
+
+def test_import_new_chart_adds_owner(
+    mocker: MockerFixture,
+    session_with_schema: Session,
+) -> None:
+    """
+    Test that importing a brand new chart still adds the importing user
+    as an owner.
+    """
+    mocker.patch.object(security_manager, "can_access", return_value=True)
+
+    gamma = User(
+        first_name="Bob",
+        last_name="Smith",
+        email="bsmith@example.org",
+        username="gamma",
+        roles=[Role(name="Gamma")],
+    )
+    session_with_schema.add(gamma)
+    session_with_schema.flush()
+
+    config = copy.deepcopy(chart_config)
+    config["datasource_id"] = 1
+    config["datasource_type"] = "table"
+
+    with override_user(gamma):
+        chart = import_chart(config)
+
+    assert gamma in chart.owners
+
+
 def test_import_tag_logic_for_charts(session_with_schema: Session):
     contents = {
         "tags.yaml": yaml.dump(
