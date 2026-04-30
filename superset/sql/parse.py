@@ -682,11 +682,18 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             exp.Drop,
             exp.TruncateTable,
             exp.Alter,
+            exp.Copy,
         )
 
         for node_type in mutating_nodes:
             if self._parsed.find(node_type):
                 return True
+
+        # SELECT INTO creates a new table, making it a mutating operation.
+        # SQLGlot parses "SELECT ... INTO <table>" as a Select with an Into node
+        # rather than a Create, so it must be checked explicitly.
+        if isinstance(self._parsed, exp.Select) and self._parsed.find(exp.Into):
+            return True
 
         # depending on the dialect (Oracle, MS SQL) the `ALTER` is parsed as a
         # command, not an expression - check at root level
