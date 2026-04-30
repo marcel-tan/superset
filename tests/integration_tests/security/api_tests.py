@@ -259,8 +259,9 @@ class TestSecurityGuestTokenApiTokenValidator(SupersetTestCase):
 
     @with_config(
         {
-            "GUEST_TOKEN_VALIDATOR_HOOK": lambda x: len(x["rls"]) == 1
-            and "tenant_id=" in x["rls"][0]["clause"]
+            "GUEST_TOKEN_VALIDATOR_HOOK": lambda x: (
+                len(x["rls"]) == 1 and "tenant_id=" in x["rls"][0]["clause"]
+            )
         }
     )
     def test_guest_validator_hook_real_world_example_positive(self):
@@ -275,8 +276,9 @@ class TestSecurityGuestTokenApiTokenValidator(SupersetTestCase):
 
     @with_config(
         {
-            "GUEST_TOKEN_VALIDATOR_HOOK": lambda x: len(x["rls"]) == 1
-            and "tenant_id=" in x["rls"][0]["clause"]
+            "GUEST_TOKEN_VALIDATOR_HOOK": lambda x: (
+                len(x["rls"]) == 1 and "tenant_id=" in x["rls"][0]["clause"]
+            )
         }
     )
     def test_guest_validator_hook_real_world_example_negative(self):
@@ -287,3 +289,65 @@ class TestSecurityGuestTokenApiTokenValidator(SupersetTestCase):
         rls_rule = {}
         self.assert400(self._get_guest_token_with_rls(rls_rule))
 
+
+class TestSecurityRolesApi(SupersetTestCase):
+    """Tests for FAB security roles API authorization (CVE-2024-53949)."""
+
+    uri = "api/v1/security/roles/"  # noqa: S105
+
+    @with_config({"FAB_ADD_SECURITY_API": True})
+    def test_get_security_roles_admin(self):
+        """
+        Security API: Admin should be able to get roles
+        """
+        self.login(ADMIN_USERNAME)
+        response = self.client.get(self.uri)
+        self.assert200(response)
+
+    @with_config({"FAB_ADD_SECURITY_API": True})
+    def test_get_security_roles_gamma(self):
+        """
+        Security API: Gamma should not be able to get roles
+        """
+        self.login(GAMMA_USERNAME)
+        response = self.client.get(self.uri)
+        self.assert403(response)
+
+    @with_config({"FAB_ADD_SECURITY_API": True})
+    def test_post_security_roles_gamma(self):
+        """
+        Security API: Gamma should not be able to create roles
+        """
+        self.login(GAMMA_USERNAME)
+        response = self.client.post(
+            self.uri,
+            data=json.dumps({"name": "new_role"}),
+            content_type="application/json",
+        )
+        self.assert403(response)
+
+    @with_config({"FAB_ADD_SECURITY_API": True})
+    def test_put_security_roles_gamma(self):
+        """
+        Security API: Gamma should not be able to update roles
+        """
+        self.login(GAMMA_USERNAME)
+        response = self.client.put(
+            f"{self.uri}1",
+            data=json.dumps({"name": "new_role"}),
+            content_type="application/json",
+        )
+        self.assert403(response)
+
+    @with_config({"FAB_ADD_SECURITY_API": True})
+    def test_delete_security_roles_gamma(self):
+        """
+        Security API: Gamma should not be able to delete roles
+        """
+        self.login(GAMMA_USERNAME)
+        response = self.client.delete(
+            f"{self.uri}1",
+            data=json.dumps({"name": "new_role"}),
+            content_type="application/json",
+        )
+        self.assert403(response)
