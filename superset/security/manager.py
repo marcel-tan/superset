@@ -394,6 +394,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
         "User Registrations",
         "User's Statistics",
         # Guarding all AB_ADD_SECURITY_API = True REST APIs
+        "Role",
         "RoleRestAPI",
         "Group",
     } | USER_MODEL_VIEWS

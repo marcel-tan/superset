@@ -46,6 +46,16 @@ def test_security_manager(app_context: None) -> None:
     assert sm
 
 
+def test_fab_role_api_is_admin_only() -> None:
+    """
+    Verify that the FAB RoleApi (class_permission_name="Role") is restricted
+    to admin users via ADMIN_ONLY_VIEW_MENUS. Without this, lower privilege
+    users could create, update, or delete roles when FAB_ADD_SECURITY_API is
+    enabled (CVE-2024-53949).
+    """
+    assert "Role" in SupersetSecurityManager.ADMIN_ONLY_VIEW_MENUS
+
+
 @pytest.fixture
 def stored_metrics() -> list[AdhocMetric]:
     """
