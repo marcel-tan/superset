@@ -3044,6 +3044,19 @@ def test_tokenize_kql(kql: str, expected: list[tuple[KQLTokenType, str]]) -> Non
             "postgresql",
             True,
         ),
+        # CVE-2025-48912: bare inline SELECT bypasses RLS parsing
+        (
+            "SELECT * FROM t WHERE NOT EXISTS "
+            "(SELECT 1 FROM blocklist WHERE blocklist.id = t.id)",
+            "postgresql",
+            True,
+        ),
+        (
+            "SELECT * FROM flights WHERE airline = "
+            "(SELECT airline FROM flights LIMIT 1)",
+            "postgresql",
+            True,
+        ),
     ],
 )
 def test_has_subquery(sql: str, engine: str, expected: bool) -> None:
