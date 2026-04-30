@@ -866,7 +866,15 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
 
         :return: True if the statement has a subquery.
         """
-        return bool(self._parsed.find(exp.Subquery))
+        if self._parsed.find(exp.Subquery):
+            return True
+
+        select_count = sum(
+            1
+            for expression in self._parsed.walk()
+            if isinstance(expression, exp.Select)
+        )
+        return select_count > 1
 
     def parse_predicate(self, predicate: str) -> exp.Expression:
         """

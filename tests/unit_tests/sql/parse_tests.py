@@ -3044,6 +3044,17 @@ def test_tokenize_kql(kql: str, expected: list[tuple[KQLTokenType, str]]) -> Non
             "postgresql",
             True,
         ),
+        # CVE-2025-48912: bare inline SELECT used to bypass RLS
+        (
+            "SELECT * FROM t UNION SELECT secret FROM sensitive_table",
+            "postgresql",
+            True,
+        ),
+        (
+            "SELECT * FROM t UNION ALL SELECT secret FROM sensitive_table",
+            "postgresql",
+            True,
+        ),
     ],
 )
 def test_has_subquery(sql: str, engine: str, expected: bool) -> None:
