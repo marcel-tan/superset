@@ -1301,6 +1301,46 @@ def test_is_mutating_anonymous_block(sql: str, expected: bool) -> None:
     assert SQLStatement(sql, "postgresql").is_mutating() == expected
 
 
+@pytest.mark.parametrize(
+    "sql, expected",
+    [
+        # Space-separated form
+        ("EXPLAIN ANALYZE DELETE FROM users", True),
+        ("EXPLAIN ANALYZE INSERT INTO users (name) VALUES ('test')", True),
+        ("EXPLAIN ANALYZE UPDATE users SET name = 'test'", True),
+        ("EXPLAIN ANALYZE SELECT 1", False),
+        ("EXPLAIN SELECT 1", False),
+        # Space-separated with extra options (conservatively treated as mutating)
+        ("EXPLAIN ANALYZE VERBOSE DELETE FROM users", True),
+        # Parenthesized form
+        ("EXPLAIN (ANALYZE) DELETE FROM users", True),
+        ("EXPLAIN (ANALYZE) SELECT 1", False),
+        ("EXPLAIN (ANALYZE, COSTS OFF) DELETE FROM users", True),
+        ("EXPLAIN (ANALYZE TRUE) DELETE FROM users", True),
+        ("EXPLAIN (ANALYZE, VERBOSE) DELETE FROM users", True),
+        # Parenthesized without ANALYZE does not execute
+        ("EXPLAIN (COSTS OFF) DELETE FROM users", False),
+        ("EXPLAIN (VERBOSE) SELECT 1", False),
+        # Bare EXPLAIN (no expression) should not crash
+        ("EXPLAIN", False),
+        # Parenthesized ANALYZE with no following SQL should not crash
+        ("EXPLAIN (ANALYZE)", False),
+        # Newline/tab between ANALYZE and DML
+        ("EXPLAIN ANALYZE\nDELETE FROM users", True),
+        ("EXPLAIN ANALYZE\tDELETE FROM users", True),
+    ],
+)
+def test_is_mutating_explain_analyze(sql: str, expected: bool) -> None:
+    """
+    Test for `is_mutating` with Postgres EXPLAIN ANALYZE prefixed DML.
+
+    EXPLAIN ANALYZE executes the statement in PostgreSQL, so DML prefixed
+    with EXPLAIN ANALYZE must be detected as mutating (CVE-2024-55633).
+    Covers both space-separated and parenthesized syntax forms.
+    """
+    assert SQLStatement(sql, "postgresql").is_mutating() == expected
+
+
 def test_optimize() -> None:
     """
     Test that the `optimize` method works as expected.

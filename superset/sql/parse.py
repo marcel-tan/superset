@@ -703,6 +703,43 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             # assume the anonymous block is mutating
             return True
 
+        # Postgres runs DMLs prefixed by `EXPLAIN ANALYZE`, see
+        # https://www.postgresql.org/docs/current/sql-explain.html
+        # Supports both space-separated (EXPLAIN ANALYZE <stmt>) and
+        # parenthesized (EXPLAIN (ANALYZE) <stmt>) syntax forms.
+        if (
+            self._dialect == Dialects.POSTGRES
+            and isinstance(self._parsed, exp.Command)
+            and self._parsed.name == "EXPLAIN"
+            and self._parsed.expression
+        ):
+            expr_name = self._parsed.expression.name
+            inner_sql: str | None = None
+
+            # Parenthesized form: EXPLAIN (ANALYZE ...) <stmt>
+            paren_match = re.match(r"^\(([^)]*)\)\s*", expr_name, re.IGNORECASE)
+            if paren_match and re.search(
+                r"\bANALYZE\b", paren_match.group(1), re.IGNORECASE
+            ):
+                inner_sql = expr_name[paren_match.end() :]
+
+            # Space-separated form: EXPLAIN ANALYZE ... <stmt>
+            else:
+                analyze_match = re.match(r"ANALYZE\s+", expr_name, re.IGNORECASE)
+                if analyze_match:
+                    inner_sql = expr_name[analyze_match.end() :]
+
+            if inner_sql:
+                try:
+                    return SQLStatement(
+                        statement=inner_sql,
+                        engine=self.engine,
+                    ).is_mutating()
+                except SupersetParseError:
+                    # If parsing fails (e.g. extra options like VERBOSE
+                    # before the statement), conservatively treat as mutating
+                    return True
+
         return False
 
     def format(self, comments: bool = True) -> str:
