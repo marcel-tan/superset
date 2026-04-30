@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { tooltipHtml } from '@superset-ui/core';
+import { sanitizeHtml, tooltipHtml } from '@superset-ui/core';
 
 const TITLE_STYLE =
   'style="font-weight: 700;max-width:300px;overflow:hidden;text-overflow:ellipsis;"';
@@ -112,6 +112,17 @@ test('should return a table with the given data and no title', () => {
         </table>
     </div>`);
   expect(html).toMatch(expectedHtml);
+});
+
+test('should strip malicious script tags from column labels (XSS prevention)', () => {
+  const xssData = [
+    ['<img src=x onerror=alert(1)>', '100'],
+    ['<script>alert("xss")</script>', '200'],
+  ];
+  const html = tooltipHtml(xssData, 'Safe Title');
+  expect(html).not.toContain('<script>');
+  expect(html).not.toContain('onerror');
+  expect(html).toContain('Safe Title');
 });
 
 test('should preserve table styling after sanitization (fixes ECharts tooltip formatting)', () => {
