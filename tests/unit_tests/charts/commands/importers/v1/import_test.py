@@ -276,3 +276,73 @@ def test_import_tag_logic_for_charts(session_with_schema: Session):
             .all()
         )
         assert len(associated_tags) == 0
+
+
+def test_import_existing_chart_does_not_change_ownership(
+    mocker: MockerFixture,
+    session_with_data: Session,
+) -> None:
+    """
+    Test that re-importing an existing chart does not add the importing user
+    as an owner, preventing privilege escalation (GH-51).
+    """
+    mocker.patch.object(security_manager, "can_access", return_value=True)
+    mocker.patch.object(security_manager, "can_access_chart", return_value=True)
+
+    admin = User(
+        first_name="Alice",
+        last_name="Doe",
+        email="adoe@example.org",
+        username="admin",
+        roles=[Role(name="Admin")],
+    )
+    gamma = User(
+        first_name="Bob",
+        last_name="Smith",
+        email="bsmith@example.org",
+        username="gamma",
+        roles=[Role(name="Gamma")],
+    )
+
+    existing_chart = (
+        session_with_data.query(Slice).filter(Slice.uuid == chart_config["uuid"]).one()
+    )
+    existing_chart.owners = [admin]
+    session_with_data.flush()
+
+    config = copy.deepcopy(chart_config)
+    config["datasource_id"] = 1
+    config["datasource_type"] = "table"
+
+    with override_user(gamma):
+        chart = import_chart(config, overwrite=True)
+
+    assert gamma not in chart.owners
+    assert admin in chart.owners
+
+
+def test_import_new_chart_adds_user_as_owner(
+    mocker: MockerFixture,
+    session_with_schema: Session,
+) -> None:
+    """
+    Test that importing a brand-new chart adds the importing user as owner.
+    """
+    mocker.patch.object(security_manager, "can_access", return_value=True)
+
+    gamma = User(
+        first_name="Bob",
+        last_name="Smith",
+        email="bsmith@example.org",
+        username="gamma",
+        roles=[Role(name="Gamma")],
+    )
+
+    config = copy.deepcopy(chart_config)
+    config["datasource_id"] = 1
+    config["datasource_type"] = "table"
+
+    with override_user(gamma):
+        chart = import_chart(config)
+
+    assert gamma in chart.owners
