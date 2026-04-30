@@ -385,6 +385,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
         "List Roles",
         "List Groups",
         "ResetPasswordView",
+        "Role",
         "RoleModelView",
         "UserGroupModelView",
         "Row Level Security",

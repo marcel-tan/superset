@@ -1547,3 +1547,13 @@ def test_validate_child_in_parent_multilayer_null_params(
     assert not sm._validate_child_in_parent_multilayer(
         child_slice_id=1, parent_slice=parent_slice
     )
+
+
+def test_fab_role_api_is_admin_only(app_context: None) -> None:
+    """
+    Regression test for CVE-2024-53949: The FAB RoleApi uses
+    class_permission_name = "Role". Verify that "Role" is in
+    ADMIN_ONLY_VIEW_MENUS so lower privilege users cannot create,
+    edit, or delete roles via the FAB security API.
+    """
+    assert "Role" in SupersetSecurityManager.ADMIN_ONLY_VIEW_MENUS
