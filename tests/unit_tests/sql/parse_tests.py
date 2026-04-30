@@ -1301,6 +1301,26 @@ def test_is_mutating_anonymous_block(sql: str, expected: bool) -> None:
     assert SQLStatement(sql, "postgresql").is_mutating() == expected
 
 
+@pytest.mark.parametrize(
+    "sql, expected",
+    [
+        ("EXPLAIN ANALYZE DELETE FROM users", True),
+        ("EXPLAIN ANALYZE INSERT INTO users (name) VALUES ('test')", True),
+        ("EXPLAIN ANALYZE UPDATE users SET name = 'test'", True),
+        ("EXPLAIN ANALYZE SELECT 1", False),
+        ("EXPLAIN SELECT 1", False),
+    ],
+)
+def test_is_mutating_explain_analyze(sql: str, expected: bool) -> None:
+    """
+    Test for `is_mutating` with Postgres EXPLAIN ANALYZE prefixed DML.
+
+    EXPLAIN ANALYZE executes the statement in PostgreSQL, so DML prefixed
+    with EXPLAIN ANALYZE must be detected as mutating (CVE-2024-55633).
+    """
+    assert SQLStatement(sql, "postgresql").is_mutating() == expected
+
+
 def test_optimize() -> None:
     """
     Test that the `optimize` method works as expected.
