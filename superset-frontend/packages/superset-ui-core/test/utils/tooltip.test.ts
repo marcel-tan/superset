@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { tooltipHtml } from '@superset-ui/core';
+import { sanitizeHtml, tooltipHtml } from '@superset-ui/core';
 
 const TITLE_STYLE =
   'style="font-weight: 700;max-width:300px;overflow:hidden;text-overflow:ellipsis;"';
@@ -141,4 +141,33 @@ test('should preserve table styling after sanitization (fixes ECharts tooltip fo
   expect(html).toContain('padding-left: 0px');
   expect(html).toContain('padding-left: 16px');
   expect(html).toContain('max-width: 300px');
+});
+
+test('should sanitize XSS payloads in column labels (CVE-2025-55672)', () => {
+  const xssPayload = '<img src=x onerror=alert(1)>';
+  const data = [[xssPayload, '100']];
+  const html = tooltipHtml(data, 'Test');
+
+  expect(html).not.toContain('onerror');
+  expect(html).not.toContain('alert(1)');
+  expect(html).not.toContain('<img src=x');
+});
+
+test('should sanitize XSS payloads in tooltip title', () => {
+  const xssTitle = '<script>alert("xss")</script>';
+  const data = [['Label', 'Value']];
+  const html = tooltipHtml(data, xssTitle);
+
+  expect(html).not.toContain('<script>');
+  expect(html).not.toContain('</script>');
+});
+
+test('should sanitize event handler attributes in column data', () => {
+  const data = [
+    ['<div onmouseover="alert(document.cookie)">hover</div>', '42'],
+  ];
+  const html = tooltipHtml(data);
+
+  expect(html).not.toContain('onmouseover');
+  expect(html).not.toContain('alert(document.cookie)');
 });
