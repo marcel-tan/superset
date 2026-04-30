@@ -711,6 +711,7 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             self._dialect == Dialects.POSTGRES
             and isinstance(self._parsed, exp.Command)
             and self._parsed.name == "EXPLAIN"
+            and self._parsed.expression
         ):
             expr_name = self._parsed.expression.name
             inner_sql: str | None = None
@@ -723,8 +724,10 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
                 inner_sql = expr_name[paren_match.end() :]
 
             # Space-separated form: EXPLAIN ANALYZE ... <stmt>
-            elif expr_name.upper().startswith("ANALYZE "):
-                inner_sql = expr_name[len("ANALYZE ") :]
+            else:
+                analyze_match = re.match(r"ANALYZE\s+", expr_name, re.IGNORECASE)
+                if analyze_match:
+                    inner_sql = expr_name[analyze_match.end() :]
 
             if inner_sql is not None:
                 try:

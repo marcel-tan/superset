@@ -1321,6 +1321,11 @@ def test_is_mutating_anonymous_block(sql: str, expected: bool) -> None:
         # Parenthesized without ANALYZE does not execute
         ("EXPLAIN (COSTS OFF) DELETE FROM users", False),
         ("EXPLAIN (VERBOSE) SELECT 1", False),
+        # Bare EXPLAIN (no expression) should not crash
+        ("EXPLAIN", False),
+        # Newline/tab between ANALYZE and DML
+        ("EXPLAIN ANALYZE\nDELETE FROM users", True),
+        ("EXPLAIN ANALYZE\tDELETE FROM users", True),
     ],
 )
 def test_is_mutating_explain_analyze(sql: str, expected: bool) -> None:
