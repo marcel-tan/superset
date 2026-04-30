@@ -753,6 +753,17 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
         :param functions: List of functions to check for
         :return: True if any of the functions are present
         """
+        # Anonymous blocks (e.g. PostgreSQL DO $$...$$) are parsed as Command
+        # nodes whose body is opaque to the AST. Fall back to scanning the raw
+        # text so that disallowed functions inside the block are still caught.
+        if (
+            self._dialect == Dialects.POSTGRES
+            and isinstance(self._parsed, exp.Command)
+            and self._parsed.name == "DO"
+        ):
+            statement_upper = str(self._parsed).upper()
+            return any(func.upper() in statement_upper for func in functions)
+
         present = {
             (
                 function.sql_name()
