@@ -396,6 +396,11 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
         # Guarding all AB_ADD_SECURITY_API = True REST APIs
         "RoleRestAPI",
         "Group",
+        "Role",
+        "Permission",
+        "PermissionViewMenu",
+        "ViewMenu",
+        "User",
     } | USER_MODEL_VIEWS
 
     ALPHA_ONLY_VIEW_MENUS = {
