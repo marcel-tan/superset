@@ -3044,6 +3044,17 @@ def test_tokenize_kql(kql: str, expected: list[tuple[KQLTokenType, str]]) -> Non
             "postgresql",
             True,
         ),
+        # CVE-2025-48912: bare SELECT sub-queries that evade exp.Subquery detection
+        (
+            "SELECT * FROM t WHERE x > ALL (SELECT 1 FROM secret)",
+            "postgresql",
+            True,
+        ),
+        (
+            "SELECT * FROM t WHERE x = SOME (SELECT id FROM secret)",
+            "postgresql",
+            True,
+        ),
     ],
 )
 def test_has_subquery(sql: str, engine: str, expected: bool) -> None:
