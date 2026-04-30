@@ -729,7 +729,7 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
                 if analyze_match:
                     inner_sql = expr_name[analyze_match.end() :]
 
-            if inner_sql is not None:
+            if inner_sql:
                 try:
                     return SQLStatement(
                         statement=inner_sql,

@@ -1323,6 +1323,8 @@ def test_is_mutating_anonymous_block(sql: str, expected: bool) -> None:
         ("EXPLAIN (VERBOSE) SELECT 1", False),
         # Bare EXPLAIN (no expression) should not crash
         ("EXPLAIN", False),
+        # Parenthesized ANALYZE with no following SQL should not crash
+        ("EXPLAIN (ANALYZE)", False),
         # Newline/tab between ANALYZE and DML
         ("EXPLAIN ANALYZE\nDELETE FROM users", True),
         ("EXPLAIN ANALYZE\tDELETE FROM users", True),
