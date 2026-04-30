@@ -2959,6 +2959,16 @@ FROM query_to_xml('SELECT * from some_table WHERE id = 42')
             True,
         ),
         ("Table | limit 10", "kustokql", False),
+        # DO $$ block bypass: functions inside anonymous code blocks must be caught
+        ("DO $$BEGIN PERFORM version(); END$$;", "postgresql", True),
+        ("DO $$BEGIN PERFORM version(); END$$ LANGUAGE plpgsql;", "postgresql", True),
+        (
+            "DO $$BEGIN PERFORM query_to_xml('SELECT 1'); END$$;",
+            "postgresql",
+            True,
+        ),
+        # DO blocks without disallowed functions should not trigger
+        ("DO $$BEGIN RAISE NOTICE 'hello'; END$$;", "postgresql", False),
     ],
 )
 def test_check_functions_present(sql: str, engine: str, expected: bool) -> None:

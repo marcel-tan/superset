@@ -753,6 +753,13 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
         :param functions: List of functions to check for
         :return: True if any of the functions are present
         """
+        # When sqlglot cannot fully parse a statement (e.g. DO $$ blocks), it
+        # falls back to a Command node. In that case AST-based detection won't
+        # find nested function calls, so use string-based matching instead.
+        if isinstance(self._parsed, exp.Command):
+            statement_upper = str(self._parsed).upper()
+            return any(func.upper() in statement_upper for func in functions)
+
         present = {
             (
                 function.sql_name()
