@@ -547,6 +547,34 @@ class BaseSQLStatement(Generic[InternalRepresentation]):
         return self.format()
 
 
+# Pattern for MySQL conditional comment markers: /*!  or /*!12345
+_MYSQL_CONDITIONAL_COMMENT_RE = re.compile(r"^!\d*\s*")
+
+
+def _check_functions_in_comments(
+    parsed: exp.Expression,
+    functions: set[str],
+) -> bool:
+    """
+    Scan AST comment nodes for disallowed function calls hidden inside
+    MySQL-style conditional comments (``/*!...*/``).
+
+    These comments are executed by MySQL/MariaDB but treated as plain
+    comments by sqlglot, so the AST-based function detection misses them.
+    """
+    upper_functions = {f.upper() for f in functions}
+    for node in parsed.walk():
+        for comment in getattr(node, "comments", None) or []:
+            if not comment.startswith("!"):
+                continue
+            # Strip the leading ``!`` and optional version digits
+            content = _MYSQL_CONDITIONAL_COMMENT_RE.sub("", comment).upper()
+            for func in upper_functions:
+                if func in content:
+                    return True
+    return False
+
+
 class SQLStatement(BaseSQLStatement[exp.Expression]):
     """
     A SQL statement.
@@ -750,6 +778,9 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
         """
         Check if any of the given functions are present in the script.
 
+        Also scans MySQL-style conditional comments (``/*!...*/``) which
+        database engines execute but sqlglot treats as plain comments.
+
         :param functions: List of functions to check for
         :return: True if any of the functions are present
         """
@@ -761,7 +792,10 @@ class SQLStatement(BaseSQLStatement[exp.Expression]):
             )
             for function in self._parsed.find_all(exp.Func)
         }
-        return any(function.upper() in present for function in functions)
+        if any(function.upper() in present for function in functions):
+            return True
+
+        return _check_functions_in_comments(self._parsed, functions)
 
     def check_tables_present(self, tables: set[str]) -> bool:
         """
